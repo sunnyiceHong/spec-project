@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: withdrawal-service
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.example.withdrawal: INFO
