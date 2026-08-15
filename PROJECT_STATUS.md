@@ -21,6 +21,9 @@ withdrawal service**. All tests green, pushed to GitHub as 3 PR-merge commits.
   - `feature/contract-and-domain` — PR #1 foundation
   - `feature/spec-and-tests` — PR #2 spec + tests (RED)
   - `feature/implementation` — PR #3 implementation (GREEN)
+- **`design.md`:** kept **local only** — untracked and listed in `.gitignore`
+  (removed from the remote repo at the user's request; the file still exists on
+  disk locally).
 
 ## 3. Environment
 

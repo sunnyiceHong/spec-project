@@ -16,3 +16,6 @@ target/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local-only docs (kept out of the remote repo)
+design.md
