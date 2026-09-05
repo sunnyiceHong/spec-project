@@ -17,5 +17,9 @@ target/
 .DS_Store
 Thumbs.db
 
+# Python
+__pycache__/
+*.py[cod]
+
 # Local-only docs (kept out of the remote repo)
 design.md
