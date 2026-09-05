@@ -1,0 +1,9 @@
+withdraw for the user by api
+api need to be called with the following parameters:
+- user_id: the unique identifier of the user requesting the withdrawal
+- amount: the amount to be withdrawn
+- card_number: the card number to which the amount will be withdrawn
+
+need to validate the user_id and amount before making the api call
+cannot withdraw if the user_id is invalid or if the amount is less than or equal to zero
+card_number should be a valid card number format (e.g., 16 digits for most cards)

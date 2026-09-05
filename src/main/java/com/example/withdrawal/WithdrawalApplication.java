@@ -6,12 +6,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * Entry point for the withdrawal service demo application.
  *
- * <p>The demo focuses on the service layer (the Spec-Contract-First TDD/BDD
- * workflow), so no {@code @RestController} is required. The in-memory
- * repositories and the withdrawal service are exposed as Spring beans so a
- * controller can be added later without changing any existing code.</p>
+ * <p>Scans the {@code com.example} base package so the {@code com.example.withdraw}
+ * feature beans (REST controller, service, in-memory repository) are wired
+ * alongside this class.</p>
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.example")
 public class WithdrawalApplication {
 
     public static void main(String[] args) {
