@@ -1,0 +1,28 @@
+{
+  "skills": {
+    "BA": {
+      "path": ".github/.skills/BA/BA_SKILL.md",
+      "description": "Business Analyst - raw requirement -> structured requirement.md"
+    },
+    "DOMAIN_ARCHITECT": {
+      "path": ".github/.skills/DOMAIN_ARCHITECT/DOMAIN_ARCHITECT_SKILL.md",
+      "description": "BDD Specialist - requirement -> Gherkin .feature file"
+    },
+    "TEST_ARCHITECT": {
+      "path": ".github/.skills/TEST_ARCHITECT/TEST_ARCHITECT_SKILL.md",
+      "description": "JUnit 5 + Mockito - .feature -> unit test class (RED)"
+    },
+    "CONTRACT_STEWARD": {
+      "path": ".github/.skills/CONTRACT_STEWARD/CONTRACT_STEWARD_SKILL.md",
+      "description": "API Designer - tests -> interface + DTOs + stub"
+    },
+    "DEVELOPER": {
+      "path": ".github/.skills/DEVELOPER/DEVELOPER_SKILL.md",
+      "description": "Implementer - implements service to pass all tests"
+    },
+    "TECHLEAD": {
+      "path": ".github/.skills/TECHLEAD/TECHLEAD_SKILL.md",
+      "description": "Final Approver - PR review report (merge/reject)"
+    }
+  }
+}

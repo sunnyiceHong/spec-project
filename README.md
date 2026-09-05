@@ -1,110 +1,96 @@
-# Withdrawal Service — Spec-Contract-First TDD/BDD Pair-Agent Demo
+# Spec-Code Agent
 
-A complete **Spring Boot 3.x** project that demonstrates the
-**Spec-Contract-First → TDD → BDD → Pair-Agent** workflow using a simple user
-withdrawal service as the demo feature.
+A **skill-driven, human-in-the-loop** multi-agent toolkit that orchestrates the full
+lifecycle of **Spring Boot feature development**. Each role in the workflow is a
+self-contained **Skill** (a markdown document with role definition, input/output
+schemas, a copy-paste prompt, and a review gate) — the intelligence lives in the
+prompts, not in glue code.
 
-## Business Rules (the Spec)
+> This repo is **the agent** (the orchestration system). It *generates* Spring Boot
+> code as its output — the Spring project is **not** the agent.
 
-1. VIP users get a **50% discount** on withdrawal fees (standard fee = **1%**).
-2. Regular users pay the **full 1%** fee.
-3. A withdrawal **fails** with `InsufficientBalanceException` when the balance
-   cannot cover **principal + fee**.
-4. Every successful withdrawal generates a **transaction record**.
+## The 6 roles
 
-## Tech Stack
+| # | Skill | Role | Produces |
+|---|---|---|---|
+| 1 | `BA` | Business Analyst | structured `requirement.md` |
+| 2 | `DOMAIN_ARCHITECT` | BDD Specialist | Gherkin `.feature` file |
+| 3 | `TEST_ARCHITECT` | JUnit 5 + Mockito | unit test class (RED, no logic) |
+| 4 | `CONTRACT_STEWARD` | API Designer | service interface + DTOs + stub |
+| 5 | `DEVELOPER` | Implementer | `{Feature}ServiceImpl` (GREEN) |
+| 6 | `TECHLEAD` | Final Approver | PR review report |
 
-| Concern           | Choice                              |
-| ----------------- | ----------------------------------- |
-| Language          | Java 21 (source is Java 17-compatible) |
-| Framework         | Spring Boot 3.4.x                   |
-| Build             | Maven                               |
-| Unit tests        | JUnit 5 + Mockito + AssertJ         |
-| BDD               | Cucumber 7.x                        |
-| Validation        | Jakarta Bean Validation             |
-| Boilerplate       | Lombok                              |
-| Functional types  | Vavr 0.10.4                         |
-
-> **Note on Vavr:** `design.md` lists "Vavr 1.11.0", but that version does not
-> exist on Maven Central. The latest stable release is **0.10.4**, which is used
-> here. Vavr is available for AI-native patterns (`Option`/`Either`/`Try`) but
-> is intentionally not required by the thin service implementation.
-
-## Project Structure
+## The workflow
 
 ```
-src/main/java/com/example/withdrawal/
-├── WithdrawalApplication.java          # @SpringBootApplication entry point
-├── api/                                # STEP 2: the frozen CONTRACT
-│   ├── WithdrawRequest.java            #   userId, amount (+ validation)
-│   ├── WithdrawResponse.java           #   transactionId, feeCharged, newBalance, timestamp
-│   ├── WithdrawalService.java          #   withdraw(...) interface
-│   └── InsufficientBalanceException.java
-├── domain/                             # STEP 3: domain + repository contracts
-│   ├── Account.java                    #   userId, balance, isVip
-│   ├── Transaction.java                #   id, userId, amount, fee, timestamp, type
-│   ├── TransactionType.java
-│   ├── AccountRepository.java
-│   └── TransactionRepository.java
-├── repository/                         # in-memory (ConcurrentHashMap + AtomicLong)
-│   ├── InMemoryAccountRepository.java
-│   └── InMemoryTransactionRepository.java
-└── service/
-    └── WithdrawalServiceImpl.java      # STEP 7: the "Driver Agent" implementation
-
-src/test/java/com/example/withdrawal/
-├── unit/api/service/WithdrawalServiceTest.java   # STEP 4: TDD unit tests
-└── bdd/
-    ├── CucumberTestRunner.java                   # STEP 6: runner
-    └── step/WithdrawalStepDefs.java              # STEP 5: BDD glue code
-
-src/test/resources/features/
-└── withdrawal.feature                  # STEP 1: the SPEC (Gherkin scenarios)
+BA → DOMAIN_ARCHITECT → TEST_ARCHITECT → CONTRACT_STEWARD → DEVELOPER → TECHLEAD
 ```
 
-## The Workflow (Spec-Contract-First TDD/BDD)
+Each phase ends at a **human review gate**. The agent does **not** advance to the next
+phase until the human explicitly approves. On rejection, the feature loops back to
+that phase and the human's comment is fed into the next execution.
 
-1. **Spec** — write the Gherkin feature first (`withdrawal.feature`).
-2. **Contract** — freeze the API surface in `api/` (DTOs + service interface).
-3. **Domain & Repository** — define entities and persistence contracts.
-4. **TDD (RED)** — write `WithdrawalServiceTest` against the contract with the
-   service implementation left empty; the suite **fails**.
-5. **BDD glue** — bind every Given/When/Then step to the real service.
-6. **Runner & config** — wire Cucumber into Maven.
-7. **Pair Agent (GREEN)** — generate `WithdrawalServiceImpl` until every test
-   passes, *without modifying anything in `api/` or `test/`*.
+## How it works
 
-## How to Build & Run
+- Every Skill generates **prompts** that get **archived per feature** under
+  `.features/{feature}/prompts/`, so any artifact can be re-developed later from the
+  exact prompt that produced it.
+- **Scripts are mechanical only** (`scaffold_feature.py`, `archive_feature.py`) — no
+  LLM calls; all "thinking" happens in the Skill prompts.
+- The AI resolves every skill's path from `.github/instructions/skills.json`
+  (the generic registry of all skills), following `.github/instructions/CLAUDE.md`.
+  Each Skill file documents its own scripts.
 
-```bash
-# Compile only
-mvn clean compile
+## Quickstart
 
-# Run unit tests (JUnit 5 + Mockito) AND BDD scenarios (Cucumber)
-mvn test
+1. **Scaffold a feature:**
+   ```bash
+   python .github/.skills/BA/scripts/scaffold_feature.py payment
+   ```
+   This creates `.features/payment/` with `input/`, `prompts/`, `final/`, and
+   `STATE.md`.
 
-# Run only the BDD scenarios filtered by tag
-mvn test -Dcucumber.filter.tags=@Withdrawal
+2. **Start the BA phase.** Open `.github/.skills/BA/BA_SKILL.md`, copy the
+   **Prompt Template**, paste it into Claude/Copilot (with your raw description in
+   `input/requirement_raw.txt`), get the output, and save it as instructed.
 
-# Full verification (compile + unit + BDD)
-mvn verify
+3. **Review the output.** Approve or reject it. On rejection, re-run the same Skill
+   with your comment as extra context.
+
+4. **Proceed to the next Skill** (`DOMAIN_ARCHITECT` → `TEST_ARCHITECT` →
+   `CONTRACT_STEWARD` → `DEVELOPER` → `TECHLEAD`), repeating steps 2–3 each time.
+
+5. **After merge**, optionally archive the feature's prompts/finals:
+   ```bash
+   python .github/.skills/TECHLEAD/scripts/archive_feature.py payment
+   ```
+
+## Layout
+
+```
+.github/
+├── instructions/
+│   ├── skills.json        # registry: skill name → path + description
+│   └── CLAUDE.md          # operating contract for the AI
+└── .skills/
+    ├── BA/                BA_SKILL.md + scripts/scaffold_feature.py
+    ├── DOMAIN_ARCHITECT/  DOMAIN_ARCHITECT_SKILL.md
+    ├── TEST_ARCHITECT/    TEST_ARCHITECT_SKILL.md
+    ├── CONTRACT_STEWARD/  CONTRACT_STEWARD_SKILL.md
+    ├── DEVELOPER/         DEVELOPER_SKILL.md
+    └── TECHLEAD/          TECHLEAD_SKILL.md + scripts/archive_feature.py
+
+docs/
+├── WORKFLOW.md            # architecture, state machine, rejection loop
+└── FEATURE_TEMPLATE.md    # BA starting template
+
+.features/{feature}/       # per-feature artifacts (feature isolation)
+├── input/requirement_raw.txt
+├── prompts/               # archived prompts
+├── final/                 # approved artifacts
+└── STATE.md
+
+src/                       # the Spring Boot project the agent writes code into
 ```
 
-Cucumber writes a human-readable report to `target/cucumber-report.html` and a
-machine-readable one to `target/cucumber.json`.
-
-## Quality Gates
-
-- ✅ All JUnit tests pass (`mvn test`)
-- ✅ All Cucumber scenarios pass (`mvn verify`)
-- ✅ Money is always `BigDecimal` — no `double`/`Float`
-- ✅ The `api/` and `test/` packages are untouched by the implementation step
-- ✅ Null-safe input handling (`null` request, blank `userId`, non-positive amount)
-- ✅ Compiles with Java 17+ (no post-17 language features)
-
-## Notes
-
-- No external database is required — repositories are in-memory
-  (`ConcurrentHashMap`).
-- The demo intentionally stops at the service layer; add a `@RestController`
-  with `@Valid` to expose it over HTTP if you need endpoints.
+See `docs/WORKFLOW.md` for the full architecture.
