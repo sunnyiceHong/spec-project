@@ -10,7 +10,7 @@
     },
     "TEST_ARCHITECT": {
       "path": ".github/.skills/TEST_ARCHITECT/TEST_ARCHITECT_SKILL.md",
-      "description": "JUnit 5 + Mockito - .feature -> unit test class (RED)"
+      "description": "Cucumber BDD - .feature -> step definitions + runner (RED)"
     },
     "CONTRACT_STEWARD": {
       "path": ".github/.skills/CONTRACT_STEWARD/CONTRACT_STEWARD_SKILL.md",

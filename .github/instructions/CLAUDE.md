@@ -66,3 +66,20 @@ A **workflow** is an ordered sequence of skills for a specific kind of task. The
 spec-code feature-development workflow (`BA → DOMAIN_ARCHITECT → TEST_ARCHITECT →
 CONTRACT_STEWARD → DEVELOPER → TECHLEAD`, with its state machine) is documented in
 `docs/WORKFLOW.md`. Consult it when running that workflow.
+
+## 7. Language & library conventions (Vavr 0.11.0)
+
+Generated Spring Boot code uses **Vavr 0.11.0** (`io.vavr:vavr`). Every skill that
+produces Java (TEST_ARCHITECT, CONTRACT_STEWARD, DEVELOPER, TECHLEAD) must follow
+these conventions:
+
+- **Failure paths** use `io.vavr.control.Try` / `Either` — never throw checked
+  exceptions from the service interface.
+- **Null-safety** uses `io.vavr.control.Option` — never `java.util.Optional`.
+- **Collections** are immutable `io.vavr.collection.*` (`List`, `Map`, `Set`, `Seq`).
+- **Money** stays `BigDecimal` (never `double`/`Float`).
+- 0.11.0 additions available: lazy `For()` comprehension, `Either.cond(...)`,
+  `Validation.cond(...)`, `Try.toEither(...)`, and JSpecify null-safety annotations.
+
+The canonical version lives in `pom.xml` (`<vavr.version>0.11.0</vavr.version>`);
+do not hardcode a different version in generated code.

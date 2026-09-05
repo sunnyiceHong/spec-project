@@ -5,9 +5,9 @@
 
 ## Role
 
-Developer — replaces the stub with the **real implementation** that passes all unit
-tests (`mvn test` green). Includes a built-in **self-healing loop** (fix-from-logs)
-and a **navigator review** (code quality).
+Developer — replaces the stub with the **real implementation** that satisfies every
+Gherkin scenario in the Cucumber BDD suite (`mvn test` green). Includes a built-in
+**self-healing loop** (fix-from-logs) and a **navigator review** (code quality).
 
 ## Trigger
 
@@ -15,16 +15,16 @@ and a **navigator review** (code quality).
 
 ## Input
 
-All prior artifacts: requirement, `.feature`, test class, and contracts (interface,
-DTOs, stub).
+All prior artifacts: requirement, `.feature`, Cucumber step definitions + runner, and
+contracts (interface, DTOs, stub).
 
 ## Output
 
 A complete implementation
-`src/main/java/com/example/{feature}/application/impl/{Feature}ServiceImpl.java`:
+`src/main/java/com/example/{feature}/service/impl/{Feature}ServiceImpl.java`:
 
 - Implements the service interface.
-- Passes **ALL** unit tests when `mvn test` is run.
+- Passes **all** Gherkin scenarios (Cucumber) and unit tests when `mvn test` is run.
 - Uses `BigDecimal` for all calculations (never `double`/`Float`).
 - Handles null inputs gracefully.
 - Contains proper exception handling.
@@ -33,24 +33,29 @@ A complete implementation
 ## Prompt Template A — initial implementation (copy-paste into Claude / Copilot)
 
 ````markdown
-You are a Developer. Implement the service for the feature below so it passes all
-unit tests.
+You are a Developer. Implement the service for the feature below so it satisfies every
+Gherkin scenario (BDD) in the Cucumber suite.
 
 ARTIFACTS (paste ALL of these):
 1. requirement:  .features/{feature}/final/requirement.md
 2. feature:      .features/{feature}/final/{feature}.feature
-3. test class:   src/test/java/com/example/{feature}/unit/api/service/{Feature}ServiceTest.java
-4. interface:    src/main/java/com/example/{feature}/api/
-5. stub:         src/main/java/com/example/{feature}/application/impl/{Feature}ServiceImpl.java
+3. step defs:    src/test/java/com/example/{feature}/bdd/{Feature}StepDefinitions.java
+4. interface:    src/main/java/com/example/{feature}/service/
+5. stub:         src/main/java/com/example/{feature}/service/impl/{Feature}ServiceImpl.java
 
 INSTRUCTIONS:
 1. Replace the stub `{Feature}ServiceImpl` with real logic in the SAME file path.
-2. Implement the interface so all unit tests pass.
-3. Use `BigDecimal` for all monetary calculations. Handle null inputs gracefully.
-4. Do NOT modify any file under `api/` or `src/test/`.
+2. Implement the interface so every Gherkin scenario (Cucumber) passes.
+3. Use Vavr 0.11.0 (`io.vavr`) idioms: `Try`/`Either` for failure paths (not thrown
+   checked exceptions), `Option` for null-safety (never `java.util.Optional`), and
+   immutable `io.vavr.collection.*` collections. 0.11.0 additions include
+   `Try.toEither(...)` and `Either.cond(...)`.
+4. Use `BigDecimal` for all monetary calculations.
+5. Do NOT modify any file under `dto/`, `entity/`, `repository/`, `service/` (the
+   contract) or `src/test/`.
 
 OUTPUT & ARCHIVAL:
-- Save the implementation to `src/main/java/com/example/{feature}/application/impl/{Feature}ServiceImpl.java`.
+- Save the implementation to `src/main/java/com/example/{feature}/service/impl/{Feature}ServiceImpl.java`.
 - Save this exact prompt to `.features/{feature}/prompts/05_developer_initial_prompt.md`.
 ````
 
@@ -70,15 +75,18 @@ MAVEN ERROR LOG:
 <PASTE THE FULL mvn test OUTPUT HERE>
 
 CURRENT IMPLEMENTATION:
-<PASTE src/main/java/com/example/{feature}/application/impl/{Feature}ServiceImpl.java HERE>
+<PASTE src/main/java/com/example/{feature}/service/impl/{Feature}ServiceImpl.java HERE>
 
 INSTRUCTIONS:
 1. Diagnose the failure(s) from the log.
-2. Produce a fixed version of the implementation. Do NOT modify `api/` or `src/test/`.
+2. Produce a fixed version of the implementation. Do NOT modify `dto/`, `entity/`,
+   `repository/`, `service/` (the contract) or `src/test/`.
+   Keep Vavr 0.11.0 idioms (`Try`/`Either`/`Option`, immutable `io.vavr.collection.*`
+   collections).
 3. Explain, in 1-3 bullets, what you changed and why.
 
 OUTPUT & ARCHIVAL:
-- Overwrite `src/main/java/com/example/{feature}/application/impl/{Feature}ServiceImpl.java` with the fixed version.
+- Overwrite `src/main/java/com/example/{feature}/service/impl/{Feature}ServiceImpl.java` with the fixed version.
 - Save this exact prompt (including the log) to `.features/{feature}/prompts/05_developer_fix_vN_prompt.md` (increment N per iteration).
 ````
 
@@ -93,10 +101,12 @@ You are a senior code reviewer (Navigator). Review the implementation below for
 design patterns, performance, and null-safety. Do NOT change behavior or break tests.
 
 IMPLEMENTATION:
-<PASTE src/main/java/com/example/{feature}/application/impl/{Feature}ServiceImpl.java HERE>
+<PASTE src/main/java/com/example/{feature}/service/impl/{Feature}ServiceImpl.java HERE>
 
 INSTRUCTIONS:
-1. Review for design patterns, performance, and null-safety.
+1. Review for design patterns, performance, and null-safety. Verify Vavr 0.11.0 usage
+   is idiomatic: `Option` over null checks, `Try`/`Either` over try/catch, immutable
+   `io.vavr.collection.*` collections, and no `java.util.Optional` leaking in.
 2. If issues are found, provide a refactored version (behavior-preserving).
 3. If no issues, say so explicitly.
 
@@ -114,5 +124,5 @@ OUTPUT & ARCHIVAL:
 
 ## Archival
 
-- Final implementation → `src/main/java/com/example/{feature}/application/impl/{Feature}ServiceImpl.java`
+- Final implementation → `src/main/java/com/example/{feature}/service/impl/{Feature}ServiceImpl.java`
 - Prompts used → `.features/{feature}/prompts/05_developer_*.md` (initial, fix_vN, review)

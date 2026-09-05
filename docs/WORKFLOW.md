@@ -6,7 +6,7 @@
  ┌──────────────────────────────────────────────────────────────────────────┐
  │  BA ──► DOMAIN_ARCHITECT ──► TEST_ARCHITECT ──► CONTRACT_STEWARD         │
  │  │            │                    │                   │                 │
- │  requirement  .feature          unit tests         interface+DTOs        │
+ │  requirement  .feature          step defs          interface+DTOs        │
  │  .md          (Gherkin)         (RED)              + stub impl            │
  │                                                                          │
  │  DEVELOPER ──► TECHLEAD ──► APPROVED ──► MERGED                           │
@@ -22,23 +22,43 @@ on explicit human approval.
 |---|---|---|---|---|
 | 1 | BA | Business Analyst | raw description | `requirement.md` |
 | 2 | DOMAIN_ARCHITECT | BDD Specialist | `requirement.md` | `{feature}.feature` |
-| 3 | TEST_ARCHITECT | JUnit+Mockito | `.feature` | `{Feature}ServiceTest.java` (RED) |
-| 4 | CONTRACT_STEWARD | API Designer | `.feature` + test | interface + DTOs + stub |
+| 3 | TEST_ARCHITECT | Cucumber BDD | `.feature` | step definitions + runner (RED) |
+| 4 | CONTRACT_STEWARD | API Designer | `.feature` + step defs | interface + DTOs + stub |
 | 5 | DEVELOPER | Implementer | all artifacts | `{Feature}ServiceImpl.java` (GREEN) |
 | 6 | TECHLEAD | Approver | all artifacts | PR review report |
 
-## 2. State Management
+## 2. State Management — per-phase approval ledger
 
-Each feature tracks its state in `.features/{feature}/STATE.md`:
+Each feature tracks **every phase's approval** in `.features/{feature}/STATE.md`:
 
+```markdown
+# Feature: {feature}
+
+## Phase approvals
+
+- BA: APPROVED
+- DOMAIN_ARCHITECT: APPROVED
+- TEST_ARCHITECT: IN_REVIEW
+- CONTRACT_STEWARD: PENDING
+- DEVELOPER: PENDING
+- TECHLEAD: PENDING
 ```
-DRAFT → BA_REVIEW → DOMAIN_REVIEW → TEST_REVIEW → CONTRACT_REVIEW
-      → DEV_REVIEW → TECHLEAD_REVIEW → APPROVED → MERGED
-```
 
-- A `*_REVIEW` state means "this phase produced output, now awaiting human approval."
-- On approval, the state advances to the next phase's work.
-- On rejection, the state stays in the same `*_REVIEW` and the feature loops back.
+Each phase has one of four statuses:
+
+- `PENDING` — not started yet.
+- `RERUN` — redo this phase (regenerate its artifact); the agent treats it like
+  `PENDING` for scheduling. Set a phase (and everything downstream of it) to `RERUN` to
+  rebuild it.
+- `IN_REVIEW` — the phase's artifact is written, awaiting human approval (the current
+  review gate; at most one phase is `IN_REVIEW` at a time).
+- `APPROVED` — the human approved this phase's output.
+
+Phases are ordered `BA → DOMAIN_ARCHITECT → TEST_ARCHITECT → CONTRACT_STEWARD →
+DEVELOPER → TECHLEAD`. The next phase to run is the earliest `PENDING`/`RERUN` phase;
+phases before it are `APPROVED`. When all six are `APPROVED`, the feature is approved
+and ready to merge via a PR from `feature/{feature}` → `main` (`MERGED` is set by the
+human after merging).
 
 ## 3. Rejection Loop
 
@@ -83,3 +103,23 @@ The AI reads `.github/instructions/skills.json` to resolve every skill's `path` 
 it is a generic registry of all skills under `.github/.skills/`. Each Skill file is
 self-contained and documents its own scripts.
 `.github/instructions/CLAUDE.md` is the operating contract — see it for the rules.
+
+## 7. Branching & Merge Discipline
+
+The workflow uses a **feature branch** per feature and merges only via **PR at the end**,
+never per phase.
+
+1. **Scaffold → create the branch.** When a feature starts, create `feature/{feature}`
+   (e.g. `git checkout -b feature/withdraw`). All generated code and phase commits live
+   on this branch — nothing is committed to `main` during development.
+2. **Each phase is a WIP commit** on the branch (a checkpoint, not a merge). A phase's
+   `APPROVED` status is a **review gate**, not a merge gate — intermediate artifacts
+   (RED step defs, stub impls) are not shippable.
+3. **Open the PR only when all six phases are `APPROVED`** and `mvn test` is green
+   (TECHLEAD `RECOMMEND_MERGE`). The PR target is `feature/{feature}` → `main`.
+4. **Merging is a human decision.** After merge, optionally run
+   `python .github/.skills/TECHLEAD/scripts/archive_feature.py <feature_name>`.
+
+Why not merge per phase: after TEST_ARCHITECT the build is RED (does not compile); after
+CONTRACT_STEWARD the service is a stub that throws `UnsupportedOperationException`.
+Only after DEVELOPER + TECHLEAD is the branch complete and green.
