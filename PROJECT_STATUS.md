@@ -1,145 +1,147 @@
 # Project Status & Handoff Summary
 
 > Feed this file back to Claude (e.g. "read PROJECT_STATUS.md and continue") to
-> resume work on this project with full context. Last updated: **2026-08-15**.
+> resume work on this project with full context. Last updated: **2026-09-05**.
 
 ---
 
 ## 1. One-line summary
 
-A complete Spring Boot 3.4 / Java 21 Maven demo that demonstrates the
-**Spec-Contract-First → TDD → BDD → Pair-Agent** workflow using a **user
-withdrawal service**. All tests green, pushed to GitHub as 3 PR-merge commits.
+This repo is now the **Spec-Code Agent toolkit** — a **skill-driven,
+human-in-the-loop** multi-agent system that orchestrates the full lifecycle of
+Spring Boot feature development. (The project **pivoted away** from the earlier
+"user withdrawal service" demo; that feature is abandoned — ignore it.)
 
-## 2. Location & remote
+## 2. Core concept (get this right, it drives everything)
 
-- **Local path:** `D:\workspace\java\spec-project`
-- **Git remote (SSH):** `git@github.com:sunnyiceHong/spec-project.git`
-- **Web:** `https://github.com/sunnyiceHong/spec-project`
-- **Main branch:** `main` (contains the fully-merged, green project)
-- **Feature branches (all pushed):**
-  - `feature/contract-and-domain` — PR #1 foundation
-  - `feature/spec-and-tests` — PR #2 spec + tests (RED)
-  - `feature/implementation` — PR #3 implementation (GREEN)
-- **`design.md`:** kept **local only** — untracked and listed in `.gitignore`
-  (removed from the remote repo at the user's request; the file still exists on
-  disk locally).
+- The **toolkit is the agent**. It *generates* Spring Boot code as its output; the
+  Spring project is **not** the agent.
+- **Skill-driven, not script-driven**: all intelligence lives in markdown **Skill**
+  files (each = role + input/output schema + copy-paste prompt template + review
+  gate). Python scripts are **mechanical only** (filesystem ops, **no LLM calls**).
+- **Human-in-the-loop**: the agent never auto-advances. Every phase ends at a
+  human review gate; rejection loops the feature back to that phase with the
+  comment as new context.
+- **Prompt archival is mandatory**: every phase saves the exact prompt used (so any
+  artifact can be re-developed later).
 
-## 3. Environment
-
-Windows 10 · Java 21.0.6 (Oracle) · Maven 3.9.9 · git 2.48.1 · **no `gh` CLI**
-· SSH auth to GitHub works (user `sunnyiceHong`).
-
-## 4. The Spec (business rules)
-
-1. VIP users get 50% discount on withdrawal fees (standard fee = 1%).
-2. Regular users pay the full 1% fee.
-3. Withdrawal fails with `InsufficientBalanceException` when balance cannot
-   cover **principal + fee**.
-4. Every successful withdrawal generates a transaction record.
-
-## 5. Tech stack (as actually implemented)
-
-| Concern | Choice | Notes |
-|---|---|---|
-| Language | Java 21 | source kept 17-compatible (no post-17 features) |
-| Framework | Spring Boot 3.4.1 | parent `spring-boot-starter-parent` |
-| Build | Maven | `artifactId=withdrawal-service`, `groupId=com.example` |
-| Unit tests | JUnit 5 + Mockito + AssertJ | via `spring-boot-starter-test` |
-| BDD | Cucumber 7.18.1 | `cucumber-java` + `cucumber-junit` (JUnit 4 runner) |
-| JUnit4 bridge | `junit-vintage-engine` | needed to run the Cucumber runner beside JUnit 5 |
-| Validation | Jakarta Bean Validation | `spring-boot-starter-validation` |
-| Boilerplate | Lombok | `@Data`, `@Builder`, `@RequiredArgsConstructor`, `@NoArgsConstructor`, `@AllArgsConstructor` |
-| Functional | Vavr **0.10.4** | design.md said "1.11.0" which does not exist (see §8) |
-
-## 6. File map (what lives where)
+## 3. The 6-role workflow + state machine
 
 ```
-src/main/java/com/example/withdrawal/
-├── WithdrawalApplication.java          # @SpringBootApplication
-├── api/                                # FROZEN CONTRACT (do not modify without re-freezing tests)
-│   ├── WithdrawRequest.java            #   userId, amount (+ @NotBlank/@NotNull/@DecimalMin)
-│   ├── WithdrawResponse.java           #   transactionId, feeCharged, newBalance, timestamp
-│   ├── WithdrawalService.java          #   withdraw(request) interface
-│   └── InsufficientBalanceException.java  # extends RuntimeException
-├── domain/
-│   ├── Account.java                    #   userId, balance (BigDecimal), isVip (boolean)
-│   ├── Transaction.java                #   id, userId, amount, fee, timestamp, type
-│   ├── TransactionType.java            #   enum: WITHDRAWAL
-│   ├── AccountRepository.java          #   findByUserId + save
-│   └── TransactionRepository.java      #   save only
-├── repository/
-│   ├── InMemoryAccountRepository.java  #   ConcurrentHashMap keyed by userId
-│   └── InMemoryTransactionRepository.java # ConcurrentHashMap + AtomicLong id gen
-└── service/
-    └── WithdrawalServiceImpl.java      # ONLY class with business logic (Driver Agent)
-
-src/test/java/com/example/withdrawal/
-├── unit/api/service/WithdrawalServiceTest.java  # 5 Mockito tests (RED→GREEN)
-└── bdd/
-    ├── CucumberTestRunner.java                   # @RunWith(Cucumber.class) + @CucumberOptions
-    └── step/WithdrawalStepDefs.java              # real service, in-memory repos
-
-src/test/resources/features/withdrawal.feature     # 4 @Withdrawal scenarios
-src/main/resources/application.yml                 # app name, port 8080, log level
+BA → DOMAIN_ARCHITECT → TEST_ARCHITECT → CONTRACT_STEWARD → DEVELOPER → TECHLEAD
 ```
 
-## 7. Test / build status (verified)
+| # | Skill | Role | Produces |
+|---|---|---|---|
+| 1 | BA | Business Analyst | structured `requirement.md` |
+| 2 | DOMAIN_ARCHITECT | BDD Specialist | Gherkin `.feature` |
+| 3 | TEST_ARCHITECT | Cucumber BDD | step defs + runner (RED) |
+| 4 | CONTRACT_STEWARD | API Designer | interface + DTOs + stub |
+| 5 | DEVELOPER | Implementer | `ServiceImpl` (GREEN) |
+| 6 | TECHLEAD | Final Approver | PR review report |
 
-- `mvn clean compile` → **BUILD SUCCESS**
-- `mvn test` → **Tests run: 9, Failures: 0, Errors: 0** (5 unit + 4 Cucumber)
-- `mvn verify` → **exit 0**
-- `mvn test -Dcucumber.filter.tags=@Withdrawal` → BDD-only (all 4 scenarios match the tag)
+State machine (per feature, in `STATE.md`):
+`DRAFT → BA_REVIEW → DOMAIN_REVIEW → TEST_REVIEW → CONTRACT_REVIEW → DEV_REVIEW → TECHLEAD_REVIEW → APPROVED → MERGED`
 
-The RED→GREEN flow was demonstrated: with the empty stub, `mvn test` failed as
-intended (9 failing), then went green after the implementation.
+## 4. File map (what lives where — all built this session)
 
-## 8. Decisions & deviations from design.md (important to remember)
+```
+.github/
+├── instructions/
+│   ├── skills.json          # GENERIC registry: skill name → {path, description}
+│   └── CLAUDE.md            # GENERIC operating manual (how to use any skill)
+└── .skills/
+    ├── BA/                  BA_SKILL.md + scripts/scaffold_feature.py
+    ├── DOMAIN_ARCHITECT/    DOMAIN_ARCHITECT_SKILL.md
+    ├── TEST_ARCHITECT/      TEST_ARCHITECT_SKILL.md
+    ├── CONTRACT_STEWARD/    CONTRACT_STEWARD_SKILL.md
+    ├── DEVELOPER/           DEVELOPER_SKILL.md
+    └── TECHLEAD/            TECHLEAD_SKILL.md + scripts/archive_feature.py
 
-1. **Vavr version:** design.md lists "Vavr 1.11.0" — that version does not
-   exist on Maven Central. Used the latest stable **0.10.4**. Documented in
-   `pom.xml` and `README.md`. Vavr is on the classpath but unused by the thin
-   service (kept intentionally simple).
-2. **Java version:** design.md tech stack says "Java 21+", but a quality gate
-   says "compile with Java 17". Chose **Java 21** as the target (matches the
-   installed JDK) and kept the source 17-compatible, satisfying both in spirit.
-3. **PRs in GitHub UI:** no `gh` CLI or API token exists (SSH only), so PRs
-   could not be opened in the GitHub web UI. Instead the work was committed to 3
-   feature branches and merged into `main` with `--no-ff`, so history reads as
-   3 PR merges. To open *live* PRs, install/authenticate `gh` (or provide a
-   token), then `gh pr create` from each feature branch.
-4. **Cucumber runner style:** uses the JUnit 4 `@RunWith(Cucumber.class)` +
-   `@CucumberOptions` (matches design.md wording) with `junit-vintage-engine`.
-   The runner class is named `CucumberTestRunner`, which does NOT match
-   Surefire's default `*Test` pattern, so `pom.xml` adds an explicit
-   `<include>**/CucumberTestRunner.java</include>`.
-5. **No `@RestController`:** design.md says HTTP endpoints are optional and the
-   service layer suffices. Skipped the controller. `WithdrawalServiceImpl` and
-   the in-memory repos are already `@Service`/`@Repository` beans, so a
-   controller can be added with zero changes to existing code.
-6. **Transaction id ownership:** the id is generated by
-   `InMemoryTransactionRepository.save()` (AtomicLong), and the service reads it
-   back from the returned `Transaction` — not generated in the service. Unit
-   tests stub `save()` to echo back the transaction with an id.
+docs/
+├── WORKFLOW.md              # SPEC-CODE specifics: 6-phase diagram, state, rejection loop
+└── FEATURE_TEMPLATE.md      # BA starting template
 
-## 9. Suggested next steps (if continuing)
+README.md                    # toolkit quickstart (rewritten)
 
-- Add a `@RestController` + `@RestControllerAdvice` (map
-  `InsufficientBalanceException` → 400/422) and `@Valid` on the request body.
-- Add a Spring Boot integration test (`@SpringBootTest`) wiring the real beans.
-- Move fee rates (1% / 50%) into `application.yml` via `@ConfigurationProperties`
-  instead of hardcoded constants.
-- Add more scenarios: unknown user, zero/negative amount, rounding cases.
-- Add CI (GitHub Actions) running `mvn verify` on push/PR.
-- (Optional) migrate Cucumber from JUnit 4 runner to the JUnit 5 platform engine.
-- Open the 3 live PRs in the GitHub UI once `gh`/token is available.
+src/                         # the ROOT Spring Boot project the agent writes code into
+├── main/java/com/example/withdrawal/WithdrawalApplication.java  # leftover skeleton
+└── main/resources/application.yml                                # leftover skeleton
 
-## 10. Key commands
+.features/                   # per-feature root (empty until scaffolded; scaffold creates:
+                             #   {feature}/input/requirement_raw.txt, prompts/, final/, STATE.md)
+```
+
+## 5. Key conventions & decisions (NON-OBVIOUS — read before continuing)
+
+1. **Layout hierarchy**: `skills.json` = generic registry · `CLAUDE.md` = generic
+   rules · `docs/WORKFLOW.md` = spec-code workflow specifics. Adding a new skill =
+   drop a folder in `.github/.skills/<NAME>/` + add ONE entry to `skills.json`
+   (no edit to `CLAUDE.md`).
+2. **Scripts are colocated** with their skill: `.github/.skills/<NAME>/scripts/`.
+   `scaffold_feature.py` → BA phase (kickoff); `archive_feature.py` → TECHLEAD
+   phase (post-merge).
+3. **skills.json must stay pure ASCII** — Windows Python defaults to GBK; non-ASCII
+   (arrows/em-dashes) caused a `UnicodeDecodeError` when json-parsed. Use `->`/`-`.
+4. **Feature input folder is `input/` (singular)**, not `inputs/`.
+5. **Package layout (Spring-style layers)**: generated Java goes under
+   `com.example.{feature}` split by responsibility — `controller/` (thin REST adapter),
+   `dto/` (request/response/error), `entity/` (domain types), `repository/` (port),
+   `service/` (interface), `service/impl/` (implementation). Contract Steward writes
+   the stub at `service/impl/{Feature}ServiceImpl.java` — the SAME path the Developer
+   later replaces — and the controller delegates to the service (no business logic in
+   the controller). Never dump everything in one flat package.
+6. **`archive_feature.py` imports `time`** (stdlib) for its timestamp suffix — a
+   deliberate deviation from design.md's "only os/pathlib/sys" (timestamp needs it).
+7. **Claude Code does NOT auto-load `.github/instructions/CLAUDE.md`** (that path is
+   a GitHub Copilot agent-mode convention). For Claude Code to auto-load, add a root
+   `CLAUDE.md` that points to it — NOT done yet.
+8. **Leftover withdrawal code**: `src/main/java/com/example/withdrawal/` and
+   `pom.xml` metadata still say "withdrawal-service" (`name`, `<description>`, Vavr
+   0.10.4, Cucumber 7.18.1). Kept only as a Spring skeleton — not cleaned up yet.
+9. **design.md is local-only** (in `.gitignore`) and was fully rewritten to be the
+   Spec-Code Agent spec on 2026-08-25.
+
+## 6. Verification done this session
+
+- ✅ All 12 toolkit files created.
+- ✅ `skills.json` validates as JSON (ASCII-safe).
+- ✅ Both `.py` scripts pass `python -m py_compile`.
+- ✅ `scaffold_feature.py` smoke-tested (creates `input/`, `prompts/`, `final/`,
+  `STATE.md`), then the test folder was removed.
+- ⚠️ **Nothing is committed yet** — all work is uncommitted on `main`.
+
+## 7. Open items / suggested next steps
+
+- [ ] Commit the toolkit (the user has not asked to commit yet).
+- [ ] (Optional) add a root `CLAUDE.md` pointing to `.github/instructions/CLAUDE.md`
+      so Claude Code auto-loads the instructions.
+- [ ] Build one **worked example feature** (e.g. `payment` or `withdraw`) end-to-end
+      through all 6 skills to validate the toolkit.
+- [ ] Clean up leftover withdrawal code + `pom.xml` metadata (name/description) if
+      the Spring skeleton should be feature-agnostic.
+- [ ] Decide whether `skills.json` needs a `group` field to route non-spec-code
+      skills (currently the workflow order lives only in `CLAUDE.md`/`WORKFLOW.md`).
+- [ ] (Optional) add CI (GitHub Actions).
+
+## 8. Key commands
 
 ```bash
-cd "D:/workspace/java/spec-project"
-mvn clean compile                          # compile
-mvn test                                   # unit + BDD
-mvn test -Dcucumber.filter.tags=@Withdrawal  # BDD only
-mvn verify                                 # full gate
+# Scaffold a new feature (creates .features/<name>/ skeleton)
+python .github/.skills/BA/scripts/scaffold_feature.py <feature_name>
+
+# Archive a feature's prompts/ + final/ (post-merge, for re-development)
+python .github/.skills/TECHLEAD/scripts/archive_feature.py <feature_name>
+
+# Spring build (root project)
+mvn clean compile
+mvn test
 ```
+
+## 9. How to operate the toolkit (quick refresher)
+
+1. `scaffold_feature.py <name>` → creates `.features/<name>/`.
+2. Read `skills.json` → resolve the skill's `path` → open the Skill markdown.
+3. Copy its Prompt Template into Claude/Copilot, get output, save artifact + prompt.
+4. Human approves/rejects → advance or loop back.
+5. After TECHLEAD approves + merge → `archive_feature.py <name>`.

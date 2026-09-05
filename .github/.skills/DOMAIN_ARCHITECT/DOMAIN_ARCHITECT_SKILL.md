@@ -24,6 +24,12 @@ A Gherkin `.feature` file at `.features/{feature}/final/{feature}.feature` with:
 - Background (if applicable)
 - Multiple Scenarios covering **happy path**, **exceptions**, and **boundaries**
 - Given-When-Then steps with **concrete numerical assertions**
+- A **consistent step vocabulary** (same phrasing reused across scenarios) so the
+  Cucumber step definitions in the TEST_ARCHITECT phase bind cleanly
+
+> This `.feature` is the **executable spec**: TEST_ARCHITECT copies it to the test
+> classpath and binds each step to the service via Cucumber. It is not just
+> documentation.
 
 ## Prompt Template (copy-paste into Claude / Copilot)
 

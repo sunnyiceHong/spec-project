@@ -47,7 +47,18 @@ def main():
 
     state_md = root / "STATE.md"
     if not state_md.exists():
-        state_md.write_text(f"# Feature: {feature}\n\nState: DRAFT\n", encoding="utf-8")
+        state_md.write_text(
+            f"# Feature: {feature}\n\n"
+            "## Phase approvals\n\n"
+            "> Status: PENDING (not started) · IN_REVIEW (awaiting human approval) · APPROVED (human approved)\n\n"
+            "- BA: PENDING\n"
+            "- DOMAIN_ARCHITECT: PENDING\n"
+            "- TEST_ARCHITECT: PENDING\n"
+            "- CONTRACT_STEWARD: PENDING\n"
+            "- DEVELOPER: PENDING\n"
+            "- TECHLEAD: PENDING\n",
+            encoding="utf-8",
+        )
 
     print(f"Scaffolded feature: {root}")
     for d in dirs:
